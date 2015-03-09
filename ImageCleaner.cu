@@ -87,13 +87,13 @@ __global__ void ffty(float *device_real, float *device_imag, int size_x, int siz
   realOutBuffer[threadIdx.x] = 0.0f;
   imagOutBuffer[threadIdx.x] = 0.0f;
   for (int n = 0; n < size_x; n++) {
-    realOutBuffer[threadIdx.x] += (device_real[blockIdx.x*size_x + n] * fft_real[n]) - (device_imag[blockIdx.x*size_x + n] * fft_imag[n]);
-    imagOutBuffer[threadIdx.x] += (device_imag[blockIdx.x*size_x + n] * fft_real[n]) + (device_real[blockIdx.x*size_x + n] * fft_imag[n]);
+    realOutBuffer[threadIdx.x] += (device_real[n*size_x + blockIdx.x] * fft_real[n]) - (device_imag[n*size_x + blockIdx.x] * fft_imag[n]);
+    imagOutBuffer[threadIdx.x] += (device_imag[n*size_x + blockIdx.x] * fft_real[n]) + (device_real[n*size_x + blockIdx.x] * fft_imag[n]);
   }
 
   __syncthreads();
-  device_real[blockIdx.x*size_x + threadIdx.x] = realOutBuffer[threadIdx.x];
-  device_imag[blockIdx.x*size_x + threadIdx.x] = imagOutBuffer[threadIdx.x];
+  device_real[threadIdx.x*size_x + blockIdx.x] = realOutBuffer[threadIdx.x];
+  device_imag[threadIdx.x*size_x + blockIdx.x] = imagOutBuffer[threadIdx.x];
 }
 
 __global__ void iffty(float *device_real, float *device_imag, int size_x, int size_y)
@@ -112,16 +112,16 @@ __global__ void iffty(float *device_real, float *device_imag, int size_x, int si
   realOutBuffer[threadIdx.x] = 0.0f;
   imagOutBuffer[threadIdx.x] = 0.0f;
   for (int n = 0; n < size_x; n++) {
-    realOutBuffer[threadIdx.x] += (device_real[blockIdx.x*size_x + n] * fft_real[n]) - (device_imag[blockIdx.x*size_x + n] * fft_imag[n]);
-    imagOutBuffer[threadIdx.x] += (device_imag[blockIdx.x*size_x + n] * fft_real[n]) + (device_real[blockIdx.x*size_x + n] * fft_imag[n]);
+    realOutBuffer[threadIdx.x] += (device_real[n*size_x + blockIdx.x] * fft_real[n]) - (device_imag[n*size_x + blockIdx.x] * fft_imag[n]);
+    imagOutBuffer[threadIdx.x] += (device_imag[n*size_x + blockIdx.x] * fft_real[n]) + (device_real[n*size_x + blockIdx.x] * fft_imag[n]);
   }
 
   realOutBuffer[threadIdx.x] /= size_x;
   imagOutBuffer[threadIdx.x] /= size_x;
 
   __syncthreads();
-  device_real[blockIdx.x*size_x + threadIdx.x] = realOutBuffer[threadIdx.x];
-  device_imag[blockIdx.x*size_x + threadIdx.x] = imagOutBuffer[threadIdx.x];
+  device_real[threadIdx.x*size_x + blockIdx.x] = realOutBuffer[threadIdx.x];
+  device_imag[threadIdx.x*size_x + blockIdx.x] = imagOutBuffer[threadIdx.x];
 }
 
 __global__ void filter(float *device_real, float *device_imag, int size_x, int size_y)
@@ -130,14 +130,14 @@ __global__ void filter(float *device_real, float *device_imag, int size_x, int s
   int eight7X = size_x - eightX;
   int eightY = size_y/8;
   int eight7Y = size_y - eightY;
-  if(!(blockIdx.x < eightX && threadIdx.x < eightY) &&
-     !(blockIdx.x < eightX && threadIdx.x >= eight7Y) &&
-     !(blockIdx.x >= eight7X && threadIdx.x < eightY) &&
-     !(blockIdx.x >= eight7X && threadIdx.x >= eight7Y))
+  if(!(threadIdx.x < eightX && blockIdx.x < eightY) &&
+     !(threadIdx.x < eightX && blockIdx.x >= eight7Y) &&
+     !(threadIdx.x >= eight7X && blockIdx.x < eightY) &&
+     !(threadIdx.x >= eight7X && blockIdx.x >= eight7Y))
   {
     // Zero out these values
-    device_real[blockIdx.x*size_y + threadIdx.x] = 0;
-    device_imag[blockIdx.x*size_y + threadIdx.x] = 0;
+    device_real[threadIdx.x*size_y + blockIdx.x] = 0;
+    device_imag[threadIdx.x*size_y + blockIdx.x] = 0;
   }
 }
 
