@@ -18,7 +18,7 @@
 
 __global__ void exampleKernel(float *real_image, float *imag_image, int size_x, int size_y)
 {
-  // Currently does nothing
+    printf("x: %d, y: %d\n", size_x, size_y);
 }
 
 //----------------------------------------------------------------
