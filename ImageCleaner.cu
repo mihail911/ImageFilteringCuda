@@ -1,4 +1,5 @@
 #include "ImageCleaner.h"
+#include <math.h>
 
 #ifndef SIZEX
 #error Please define SIZEX.
@@ -6,6 +7,7 @@
 #ifndef SIZEY
 #error Please define SIZEY.
 #endif
+#define PI 3.14159265
 
 //----------------------------------------------------------------
 // TODO:  CREATE NEW KERNELS HERE.  YOU CAN PLACE YOUR CALLS TO
@@ -16,10 +18,130 @@
 //----------------------------------------------------------------
 
 
-__global__ void exampleKernel(float *real_image, float *imag_image, int size_x, int size_y)
+__global__ void fftx(float *device_real, float *device_imag, int size_x, int size_y)
 {
-  // Currently does nothing
+  __shared__ float realOutBuffer[SIZEX];
+  __shared__ float imagOutBuffer[SIZEX];
+  __shared__ float fft_real[SIZEY];
+  __shared__ float fft_imag[SIZEY];
+
+  for (int n = 0; n < size_y; n++) {
+    float term = -2 * PI * threadIdx.x * n / size_y;
+    fft_real[n] = cos(term);
+    fft_imag[n] = sin(term);
+  }
+
+  realOutBuffer[threadIdx.x] = 0.0f;
+  imagOutBuffer[threadIdx.x] = 0.0f;
+  for (int n = 0; n < size_y; n++) {
+    realOutBuffer[threadIdx.x] += (device_real[blockIdx.x*size_y + n] * fft_real[n]) - (device_imag[blockIdx.x*size_y + n] * fft_imag[n]);
+    imagOutBuffer[threadIdx.x] += (device_imag[blockIdx.x*size_y + n] * fft_real[n]) + (device_real[blockIdx.x*size_y + n] * fft_imag[n]);
+  }
+
+  __syncthreads();
+  device_real[blockIdx.x*size_y + threadIdx.x] = realOutBuffer[threadIdx.x];
+  device_imag[blockIdx.x*size_y + threadIdx.x] = imagOutBuffer[threadIdx.x];
 }
+
+__global__ void ifftx(float *device_real, float *device_imag, int size_x, int size_y)
+{
+  __shared__ float realOutBuffer[SIZEX];
+  __shared__ float imagOutBuffer[SIZEX];
+  __shared__ float fft_real[SIZEY];
+  __shared__ float fft_imag[SIZEY];
+
+  for (int n = 0; n < size_y; n++) {
+    float term = 2 * PI * threadIdx.x * n / size_y;
+    fft_real[n] = cos(term);
+    fft_imag[n] = sin(term);
+  }
+
+  realOutBuffer[threadIdx.x] = 0.0f;
+  imagOutBuffer[threadIdx.x] = 0.0f;
+  for (int n = 0; n < size_y; n++) {
+    realOutBuffer[threadIdx.x] += (device_real[blockIdx.x*size_y + n] * fft_real[n]) - (device_imag[blockIdx.x*size_y + n] * fft_imag[n]);
+    imagOutBuffer[threadIdx.x] += (device_imag[blockIdx.x*size_y + n] * fft_real[n]) + (device_real[blockIdx.x*size_y + n] * fft_imag[n]);
+  }
+  
+  realOutBuffer[threadIdx.x] /= size_y;
+  imagOutBuffer[threadIdx.x] /= size_y;
+
+  __syncthreads();
+  device_real[blockIdx.x*size_y + threadIdx.x] = realOutBuffer[threadIdx.x];
+  device_imag[blockIdx.x*size_y + threadIdx.x] = imagOutBuffer[threadIdx.x];
+}
+
+__global__ void ffty(float *device_real, float *device_imag, int size_x, int size_y)
+{
+  __shared__ float realOutBuffer[SIZEY];
+  __shared__ float imagOutBuffer[SIZEY];
+  __shared__ float fft_real[SIZEX];
+  __shared__ float fft_imag[SIZEX];
+
+  for (int n = 0; n < size_x; n++) {
+    float term = -2 * PI * threadIdx.x * n / size_x;
+    fft_real[n] = cos(term);
+    fft_imag[n] = sin(term);
+  }
+
+  realOutBuffer[threadIdx.x] = 0.0f;
+  imagOutBuffer[threadIdx.x] = 0.0f;
+  for (int n = 0; n < size_x; n++) {
+    realOutBuffer[threadIdx.x] += (device_real[blockIdx.x*size_x + n] * fft_real[n]) - (device_imag[blockIdx.x*size_x + n] * fft_imag[n]);
+    imagOutBuffer[threadIdx.x] += (device_imag[blockIdx.x*size_x + n] * fft_real[n]) + (device_real[blockIdx.x*size_x + n] * fft_imag[n]);
+  }
+
+  __syncthreads();
+  device_real[blockIdx.x*size_x + threadIdx.x] = realOutBuffer[threadIdx.x];
+  device_imag[blockIdx.x*size_x + threadIdx.x] = imagOutBuffer[threadIdx.x];
+}
+
+__global__ void iffty(float *device_real, float *device_imag, int size_x, int size_y)
+{
+  __shared__ float realOutBuffer[SIZEY];
+  __shared__ float imagOutBuffer[SIZEY];
+  __shared__ float fft_real[SIZEX];
+  __shared__ float fft_imag[SIZEX];
+
+  for (int n = 0; n < size_x; n++) {
+    float term = 2 * PI * threadIdx.x * n / size_x;
+    fft_real[n] = cos(term);
+    fft_imag[n] = sin(term);
+  }
+
+  realOutBuffer[threadIdx.x] = 0.0f;
+  imagOutBuffer[threadIdx.x] = 0.0f;
+  for (int n = 0; n < size_x; n++) {
+    realOutBuffer[threadIdx.x] += (device_real[blockIdx.x*size_x + n] * fft_real[n]) - (device_imag[blockIdx.x*size_x + n] * fft_imag[n]);
+    imagOutBuffer[threadIdx.x] += (device_imag[blockIdx.x*size_x + n] * fft_real[n]) + (device_real[blockIdx.x*size_x + n] * fft_imag[n]);
+  }
+
+  realOutBuffer[threadIdx.x] /= size_x;
+  imagOutBuffer[threadIdx.x] /= size_x;
+
+  __syncthreads();
+  device_real[blockIdx.x*size_x + threadIdx.x] = realOutBuffer[threadIdx.x];
+  device_imag[blockIdx.x*size_x + threadIdx.x] = imagOutBuffer[threadIdx.x];
+}
+
+__global__ void filter(float *device_real, float *device_imag, int size_x, int size_y)
+{
+  int eightX = size_x/8;
+  int eight7X = size_x - eightX;
+  int eightY = size_y/8;
+  int eight7Y = size_y - eightY;
+  if(!(blockIdx.x < eightX && threadIdx.x < eightY) &&
+     !(blockIdx.x < eightX && threadIdx.x >= eight7Y) &&
+     !(blockIdx.x >= eight7X && threadIdx.x < eightY) &&
+     !(blockIdx.x >= eight7X && threadIdx.x >= eight7Y))
+  {
+    // Zero out these values
+    device_real[blockIdx.x*size_y + threadIdx.x] = 0;
+    device_imag[blockIdx.x*size_y + threadIdx.x] = 0;
+  }
+}
+
+
 
 //----------------------------------------------------------------
 // END ADD KERNEL DEFINTIONS
@@ -80,7 +202,12 @@ __host__ float filterImage(float *real_image, float *imag_image, int size_x, int
   //    4. Stream to execute kernel on, should always be 'filterStream'
   //
   // Also note that you pass the pointers to the device memory to the kernel call
-  exampleKernel<<<1,128,0,filterStream>>>(device_real,device_imag,size_x,size_y);
+  fftx <<<size_x,size_y,0,filterStream>>> (device_real,device_imag,size_x,size_y);
+  ffty <<<size_x,size_y,0,filterStream>>> (device_real,device_imag,size_x,size_y);
+  filter <<<size_x,size_y,0,filterStream>>> (device_real,device_imag,size_x,size_y);
+  ifftx <<<size_x,size_y,0,filterStream>>> (device_real,device_imag,size_x,size_y);
+  iffty <<<size_x,size_y,0,filterStream>>> (device_real,device_imag,size_x,size_y);
+
 
   //---------------------------------------------------------------- 
   // END ADD KERNEL CALLS
