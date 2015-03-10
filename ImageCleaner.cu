@@ -25,8 +25,8 @@ __global__ void fftx(float *device_real, float *device_imag, int size_x, int siz
   //__shared__ float imagOutBuffer[SIZEX];
   float realOutVal;
   float imagOutVal;
-  float threadDeviceReal[size_x * size_y];
-  float threadDeviceImag[size_x * size_y];
+  float threadDeviceReal[SIZEX * SIZEY];
+  float threadDeviceImag[SIZEX * SIZEY];
 
   __shared__ float fft_real[SIZEY];
   __shared__ float fft_imag[SIZEY];
