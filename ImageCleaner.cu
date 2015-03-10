@@ -25,11 +25,11 @@ __global__ void fftx(float *device_real, float *device_imag, int size_x, int siz
   //__shared__ float imagOutBuffer[SIZEX];
   float realOutVal;
   float imagOutVal;
-  float threadDeviceReal[size_x * size_y];
-  float threadDeviceImag[size_x * size_y];
+  //__shared__ float fft_real[SIZEY];
+  //__shared__ float fft_imag[SIZEY];
+  float fft_real[SIZEY];
+  float fft_imag[SIZEY];
 
-  __shared__ float fft_real[SIZEY];
-  __shared__ float fft_imag[SIZEY];
 
   for (int n = 0; n < size_y; n++) {
     float term = -2 * PI * threadIdx.x * n / size_y;
@@ -47,7 +47,7 @@ __global__ void fftx(float *device_real, float *device_imag, int size_x, int siz
     imagOutVal += (device_imag[blockIdx.x*size_y + n] * fft_real[n]) + (device_real[blockIdx.x*size_y + n] * fft_imag[n]);
   }
 
-  //__syncthreads(); //we don't need to sync because writing to different spots
+  __syncthreads(); //we don't need to sync because writing to different spots
   // threadDeviceReal[blockIdx.x*size_y + threadIdx.x] = realOutVal;
   // threadDeviceImag[blockIdx.x*size_y + threadIdx.x] = imagOutVal;
 
@@ -61,10 +61,11 @@ __global__ void ifftx(float *device_real, float *device_imag, int size_x, int si
   //__shared__ float imagOutBuffer[SIZEX];
   float realOutVal;
   float imagOutVal;
-  // float threadDeviceReal[size_x * size_y];
-  // float threadDeviceImag[size_x * size_y];
-  __shared__ float fft_real[SIZEY];
-  __shared__ float fft_imag[SIZEY];
+  //__shared__ float fft_real[SIZEY];
+  //__shared__ float fft_imag[SIZEY];
+  float fft_real[SIZEY];
+  float fft_imag[SIZEY];
+
 
   for (int n = 0; n < size_y; n++) {
     float term = 2 * PI * threadIdx.x * n / size_y;
@@ -82,8 +83,7 @@ __global__ void ifftx(float *device_real, float *device_imag, int size_x, int si
   realOutVal /= size_y;
   imagOutVal /= size_y;
 
-  //__syncthreads();
-
+  __syncthreads();
   // threadDeviceReal[blockIdx.x*size_y + threadIdx.x] = realOutVal;
   // threadDeviceImag[blockIdx.x*size_y + threadIdx.x] = imagOutVal;
 
@@ -97,8 +97,11 @@ __global__ void ffty(float *device_real, float *device_imag, int size_x, int siz
   //__shared__ float imagOutBuffer[SIZEY];
   float realOutVal;
   float imagOutVal;
-  __shared__ float fft_real[SIZEX];
-  __shared__ float fft_imag[SIZEX];
+  //__shared__ float fft_real[SIZEX];
+  //__shared__ float fft_imag[SIZEX];
+  float fft_real[SIZEX];
+  float fft_imag[SIZEX];
+
 
   for (int n = 0; n < size_x; n++) {
     float term = -2 * PI * threadIdx.x * n / size_x;
@@ -113,7 +116,7 @@ __global__ void ffty(float *device_real, float *device_imag, int size_x, int siz
     imagOutVal += (device_imag[n*size_x + blockIdx.x] * fft_real[n]) + (device_real[n*size_x + blockIdx.x] * fft_imag[n]);
   }
 
-  //__syncthreads();
+  __syncthreads();
   device_real[threadIdx.x*size_x + blockIdx.x] = realOutVal;
   device_imag[threadIdx.x*size_x + blockIdx.x] = imagOutVal;
 }
@@ -124,8 +127,11 @@ __global__ void iffty(float *device_real, float *device_imag, int size_x, int si
   //__shared__ float imagOutBuffer[SIZEY];
   float realOutVal;
   float imagOutVal;
-  __shared__ float fft_real[SIZEX];
-  __shared__ float fft_imag[SIZEX];
+  //__shared__ float fft_real[SIZEX];
+  //__shared__ float fft_imag[SIZEX];
+  float fft_real[SIZEX];
+  float fft_imag[SIZEX];
+
 
   for (int n = 0; n < size_x; n++) {
     float term = 2 * PI * threadIdx.x * n / size_x;
@@ -143,7 +149,7 @@ __global__ void iffty(float *device_real, float *device_imag, int size_x, int si
   realOutVal /= size_x;
   imagOutVal /= size_x;
 
-  //__syncthreads();
+  __syncthreads();
   device_real[threadIdx.x*size_x + blockIdx.x] = realOutVal;
   device_imag[threadIdx.x*size_x + blockIdx.x] = imagOutVal;
 }
