@@ -9,20 +9,9 @@
 #endif
 #define PI 3.14159265
 
-//----------------------------------------------------------------
-// TODO:  CREATE NEW KERNELS HERE.  YOU CAN PLACE YOUR CALLS TO
-//        THEM IN THE INDICATED SECTION INSIDE THE 'filterImage'
-//        FUNCTION.
-//
-// BEGIN ADD KERNEL DEFINITIONS
-//----------------------------------------------------------------
-
 
 __global__ void fftx(float *device_real, float *device_imag, int size_x, int size_y)
 {
-  //draw into shared memory from global
-  //__shared__ float realOutBuffer[SIZEX];
-  //__shared__ float imagOutBuffer[SIZEX];
   float realOutVal;
   float imagOutVal;
   float fft_real[SIZEY];
@@ -35,9 +24,6 @@ __global__ void fftx(float *device_real, float *device_imag, int size_x, int siz
     fft_imag[n] = sin(term);
   }
 
-  //realOutBuffer[threadIdx.x] = 0.0f; //we can make this local to each thread--no need for shared!
-  //imagOutBuffer[threadIdx.x] = 0.0f;
-
   realOutVal = 0.0f;
   imagOutVal = 0.0f;
   for (int n = 0; n < size_y; n++) {
@@ -45,9 +31,7 @@ __global__ void fftx(float *device_real, float *device_imag, int size_x, int siz
     imagOutVal += (device_imag[blockIdx.x*size_y + n] * fft_real[n]) + (device_real[blockIdx.x*size_y + n] * fft_imag[n]);
   }
 
-  __syncthreads(); //we don't need to sync because writing to different spots
-  // threadDeviceReal[blockIdx.x*size_y + threadIdx.x] = realOutVal;
-  // threadDeviceImag[blockIdx.x*size_y + threadIdx.x] = imagOutVal;
+  __syncthreads(); 
 
   device_real[blockIdx.x*size_y + threadIdx.x] = realOutVal;;
   device_imag[blockIdx.x*size_y + threadIdx.x] = imagOutVal;
@@ -55,12 +39,8 @@ __global__ void fftx(float *device_real, float *device_imag, int size_x, int siz
 
 __global__ void ifftx(float *device_real, float *device_imag, int size_x, int size_y)
 {
-  //__shared__ float realOutBuffer[SIZEX];
-  //__shared__ float imagOutBuffer[SIZEX];
   float realOutVal;
   float imagOutVal;
-  //__shared__ float fft_real[SIZEY];
-  //__shared__ float fft_imag[SIZEY];
   float fft_real[SIZEY];
   float fft_imag[SIZEY];
 
@@ -82,8 +62,6 @@ __global__ void ifftx(float *device_real, float *device_imag, int size_x, int si
   imagOutVal /= size_y;
 
   __syncthreads();
-  // threadDeviceReal[blockIdx.x*size_y + threadIdx.x] = realOutVal;
-  // threadDeviceImag[blockIdx.x*size_y + threadIdx.x] = imagOutVal;
 
   device_real[blockIdx.x*size_y + threadIdx.x] = realOutVal;
   device_imag[blockIdx.x*size_y + threadIdx.x] = imagOutVal;
@@ -91,12 +69,8 @@ __global__ void ifftx(float *device_real, float *device_imag, int size_x, int si
 
 __global__ void ffty(float *device_real, float *device_imag, int size_x, int size_y)
 {
-  //__shared__ float realOutBuffer[SIZEY];
-  //__shared__ float imagOutBuffer[SIZEY];
   float realOutVal;
   float imagOutVal;
-  //__shared__ float fft_real[SIZEX];
-  //__shared__ float fft_imag[SIZEX];
   float fft_real[SIZEX];
   float fft_imag[SIZEX];
 
@@ -121,12 +95,8 @@ __global__ void ffty(float *device_real, float *device_imag, int size_x, int siz
 
 __global__ void iffty(float *device_real, float *device_imag, int size_x, int size_y)
 {
-  //__shared__ float realOutBuffer[SIZEY];
-  //__shared__ float imagOutBuffer[SIZEY];
   float realOutVal;
   float imagOutVal;
-  //__shared__ float fft_real[SIZEX];
-  //__shared__ float fft_imag[SIZEX];
   float fft_real[SIZEX];
   float fft_imag[SIZEX];
 
@@ -214,13 +184,6 @@ __host__ float filterImage(float *real_image, float *imag_image, int size_x, int
   // Start timing for the execution
   CUDA_ERROR_CHECK(cudaEventRecord(start,filterStream));
 
-  //----------------------------------------------------------------
-  // TODO: YOU SHOULD PLACE ALL YOUR KERNEL EXECUTIONS
-  //        HERE BETWEEN THE CALLS FOR STARTING AND
-  //        FINISHING TIMING FOR THE EXECUTION PHASE
-  // BEGIN ADD KERNEL CALLS
-  //----------------------------------------------------------------
-
   // This is an example kernel call, you should feel free to create
   // as many kernel calls as you feel are needed for your program
   // Each of the parameters are as follows:
@@ -235,11 +198,6 @@ __host__ float filterImage(float *real_image, float *imag_image, int size_x, int
   filter <<<size_x,size_y,0,filterStream>>> (device_real,device_imag,size_x,size_y);
   ifftx <<<size_x,size_y,0,filterStream>>> (device_real,device_imag,size_x,size_y);
   iffty <<<size_x,size_y,0,filterStream>>> (device_real,device_imag,size_x,size_y);
-
-
-  //---------------------------------------------------------------- 
-  // END ADD KERNEL CALLS
-  //----------------------------------------------------------------
 
   // Finish timimg for the execution 
   CUDA_ERROR_CHECK(cudaEventRecord(stop,filterStream));
